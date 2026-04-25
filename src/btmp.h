@@ -11,20 +11,21 @@ typedef enum {
     BIN     = 3,    // Send binaries
     OK      = 4,    // OK
     ERR     = 5,    // An error
+    CONNECT = 6,    // Say hello to the server
 } MsgType;
-
-union MultipleStrings {
-    char from[24];
-    char name[24];
-    char to[24];
-    char email[24];
-};
 
 typedef struct {
     MsgType type;
-    union MultipleStrings fromAndname;
-    union MultipleStrings toAndemail;
-    char hash[256];
+    union {
+        char from[24];
+        char name[24];
+    } src;
+    union {
+        char to[24];
+        char email[24];
+    } dst;
+    char hash[64];
+    char sign[64];
     int msgLen;
     char *msg;
 } Msg;
@@ -35,6 +36,7 @@ typedef struct {
  * FROM: wilrak0v
  * TO: makroHard
  * HASH: ghqsuflhelqgqs
+ * SIGN: <sign-base64>
  * LEN: <len>
  * MSG: <msg>
  *
@@ -45,8 +47,16 @@ typedef struct {
  * HASH: gmhdmuahodqsli
  *
  * TYPE: OK
+ * HASH: mqsghdflkhsamq     // Décrypter (clé publique)
+ * PASSWD: <passwd>         // Encrypter (clé privée)
  *
  * TYPE: ERR
+ * SIGN: <sign-base64>
  * LEN: <len>
  * MSG: <msg>
+ *
+ * ======================
+ * TYPE: CONNECT            // Signaler qu'on est connecté pour recevoir les messages en attentes
+ * NAME: wilrak0v
+ * HASH: sqmghmqlghkl
  */
