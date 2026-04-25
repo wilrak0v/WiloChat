@@ -1,9 +1,6 @@
-#include <stdio.h>
 #include "btmp.h"
-#include "network.h"
 #include "mongoose.h"
 
-struct Session *sessions = NULL;
 
 static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
 {
@@ -18,8 +15,12 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
     else if (ev == MG_EV_WS_MSG)
     {
         struct mg_ws_message *wm = (struct mg_ws_message *) ev_data;
-        init_msg(wm);
+        init_msg(c, wm);
         //printf("Reçu via WS : %s\n", wm->data.buf);
+    }
+    else if (ev == MG_EV_CLOSE)
+    {
+        remove_session(c);
     }
 }
 

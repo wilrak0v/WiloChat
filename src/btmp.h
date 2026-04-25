@@ -31,7 +31,8 @@ typedef struct {
     char *msg;
 } Msg;
 
-Msg init_msg(struct mg_ws_message *wm);
+Msg init_msg(struct mg_connection *c, struct mg_ws_message *wm);
+void remove_session(struct mg_connection *c);
 
 /*
  * ======================
