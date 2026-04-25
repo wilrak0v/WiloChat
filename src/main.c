@@ -1,5 +1,6 @@
 #include "btmp.h"
 #include "mongoose.h"
+#include "db.h"
 
 
 static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
@@ -27,6 +28,7 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
 int main()
 {
     struct mg_mgr mgr;
+    db_init();
     mg_mgr_init(&mgr);
     mg_http_listen(&mgr, "http://0.0.0.0:8000", ev_handler, NULL);
     for (;;)

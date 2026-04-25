@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "btmp.h"
+#include "db.h"
 #include "mongoose.h"
 #include "network.h"
 
@@ -42,6 +43,7 @@ void send_msg(Msg msg, char *buf)
     if (!found)
     {
         printf("User %s offline. Saving to the DB...\n", msg.dst.to);
+        db_save_msg(msg.src.from, msg.dst.to, buf);
     }
 }
 
@@ -66,6 +68,7 @@ void say_hello(struct mg_connection *c, char *buf)
     sessions = new;
     printf("New session: [%s]", username);
     mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;Welcome to Wilo Chat %s!", OK, username);
+    db_send_pending(c, username);
 }
 
 Msg init_msg(struct mg_connection* c, struct mg_ws_message *wm)
