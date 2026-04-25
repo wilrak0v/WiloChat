@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include "mongoose.h"
 
 typedef enum {
     MSG     = 0,    // Message
@@ -29,6 +30,8 @@ typedef struct {
     int msgLen;
     char *msg;
 } Msg;
+
+Msg init_msg(struct mg_ws_message *wm);
 
 /*
  * ======================
