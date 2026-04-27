@@ -1,3 +1,7 @@
 social.db
 wlch.elf
 wlch
+*.o
+*.elf
+src/*.o
+*.db
