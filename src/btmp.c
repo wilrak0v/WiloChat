@@ -24,6 +24,17 @@ int hex_to_bytes(uint8_t *hex, uint8_t *bytes, size_t bytes_len)
     return 0;
 }
 
+struct Session *find_user(const char *user, struct Session *s)
+{
+    while (s != NULL)
+    {
+        if (strcmp(user, s->username) == 0)
+            return s;
+        s = s->next;
+    }
+    return NULL;
+}
+
 void generate_challenge(uint8_t challenge[32])
 {
     FILE *f = fopen("/dev/urandom", "r");
@@ -46,7 +57,6 @@ int get_type(char *buf)
 
 void create_msg(Msg *msg, char *buf)
 {
-    printf("buf : %s \n", buf);
     strtok(buf, ";");
     strcpy(msg->src.from, strtok(NULL, ";"));
     strcpy(msg->dst.to, strtok(NULL, ";"));
@@ -54,25 +64,24 @@ void create_msg(Msg *msg, char *buf)
 
 void send_msg(Msg msg, char *buf)
 {
-    struct Session *current = sessions;
-    int found = 0;
-    printf("Message for [%s]\n",msg.dst.to);
-
-    while (current != NULL)
+    struct Session *sender = find_user(msg.src.from, sessions);
+    if (sender == NULL || !sender->authentificated)
     {
-        if (strcmp(current->username, msg.dst.to) == 0)
-        {
-            mg_ws_printf(current->c, WEBSOCKET_OP_TEXT, "%s", buf);
-            printf("Message relayed\n");
-            found = 1;
-            break;
-        }
-        current = current->next;
+        printf("[%s] isn't authentificated\n", sender->username);
+        return;
     }
 
-    if (!found)
+    struct Session *receiver = find_user(msg.dst.to, sessions);
+    printf("Message for [%s]\n",msg.dst.to);
+
+    if (receiver != NULL && receiver->authentificated)
     {
-        printf("User %s offline. Saving to the DB...\n", msg.dst.to);
+        mg_ws_printf(receiver->c, WEBSOCKET_OP_TEXT, "%s", buf);
+        printf("Message relayed to [%s]\n", receiver->username);
+    }
+    else
+    {
+        printf("User [%s] offline or not authentificated. Saving to the DB...\n", msg.dst.to);
         db_save_msg(msg.src.from, msg.dst.to, buf);
     }
 }
@@ -97,7 +106,7 @@ void say_hello(struct mg_connection *c, char *buf)
     new->username[23] = 0;
     new->authentificated = 0;
     generate_challenge(new->expected_challenge);
-    printf("New session: [%s]", username);
+    printf("New session: [%s]\n", username);
 
     new->next = sessions;
     sessions = new;
@@ -123,18 +132,8 @@ void verify_auth(struct mg_connection *c, char *buf)
     if (pubkey_hex) ((char*)pubkey_hex)[strcspn((char*)pubkey_hex, "\r\n")] = 0;
     if (sign_hex) ((char*)sign_hex)[strcspn((char*)sign_hex, "\r\n")] = 0;
 
-    struct Session *current = sessions;
-    int found = 0;
-    while (current != NULL)
-    {
-        if (strcmp(current->username, user) == 0)
-        {
-            found = 1;
-            break;
-        }
-        current = current->next;
-    }
-    if (!found)
+    struct Session *account = find_user(user, sessions);
+    if (account == NULL)
     {
         mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;User doesn't exists", ERR);
         return;
@@ -148,29 +147,21 @@ void verify_auth(struct mg_connection *c, char *buf)
         mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;Invalid hex format", ERR);
         return;
     }
-    // Juste avant crypto_eddsa_check
-    printf("\n--- DEBUG AUTH ---\n");
-    printf("User: %s\n", user);
 
-    printf("Pubkey (hex attendue): ");
-    for(int i=0; i<32; i++) printf("%02x", pubkey_bin[i]);
-
-    printf("\nChallenge (hex attendu): ");
-    for(int i=0; i<32; i++) printf("%02x", current->expected_challenge[i]);
-
-    printf("\nSignature (hex reçue): %s\n", sign_hex);
-    printf("DEBUG: Longueur sig_hex reçue: %zu\n", strlen((char*)sign_hex));
-    printf("\n------------------\n");
-
-    if (crypto_sign_verify_detached(sig_bin, current->expected_challenge, 32, pubkey_bin) == 0)
+    if (crypto_sign_verify_detached(sig_bin, account->expected_challenge, 32, pubkey_bin) == 0)
     {
-        current->authentificated = 1;
+        account->authentificated = 1;
         mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;Authenticated", OK);
         db_send_pending(c, user);
         printf("Auth success for [%s]\n", user);
     }
     else
-        mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;Auth failed", ERR);
+    {
+        generate_challenge(account->expected_challenge);
+        char hex_challenge[65];
+        sodium_bin2hex(hex_challenge, sizeof(hex_challenge), account->expected_challenge, 32);
+        mg_ws_printf(c, WEBSOCKET_OP_TEXT, "%d;%s", ERR, hex_challenge);
+    }
 }
 
 Msg init_msg(struct mg_connection* c, struct mg_ws_message *wm)
@@ -210,7 +201,6 @@ Msg init_msg(struct mg_connection* c, struct mg_ws_message *wm)
             say_hello(c, buf2);
             break;
     }
-    printf("Type: %d\n", msg.type);
     free(buf);
     return msg;
 }

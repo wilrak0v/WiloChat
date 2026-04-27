@@ -8,9 +8,10 @@ Il permet également de garder en mémoire les messages destinés à des utilisa
 Pour la stack, j'ai choisi quelque chose de plutôt classique.
 1. Mongoose pour le réseau
 2. Sqlite3
+3. Sodium
 3. Les libraries standards C
 
-> Assurez-vous d'avoir `libsqlite3-dev` installé sur votre système, le nom du paquet peut différer en fonction de la distribution Linux sur laquelle vous êtes.
+> Assurez-vous d'avoir `libsqlite3-dev` installé sur votre système, le nom du paquet peut différer en fonction de la distribution Linux sur laquelle vous êtes. De même pour `libsodium-dev`.
 
 ### Compilation
 ```Bash
