@@ -7,7 +7,7 @@
 
 typedef enum {
     MSG     = 0,    // Message
-    CREATE  = 1,    // Create an account
+    AUTH    = 1,    // Create an account
     FIL     = 2,    // Send files
     BIN     = 3,    // Send binaries
     OK      = 4,    // OK

@@ -3,7 +3,7 @@ CC = gcc
 
 CFLAGS = -Wall -Wextra -Isrc -O2
 
-LDFLAGS = -lsqlite3 -lpthread
+LDFLAGS = -lsqlite3 -lpthread -lsodium
 
 SRCS = src/main.c src/db.c src/btmp.c src/mongoose.c
 
